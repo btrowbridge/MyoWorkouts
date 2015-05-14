@@ -23,6 +23,7 @@ public:
 	bool countingCurl = false;
 	bool countingPunch = false;
 
+
     DataCollector()
     : onArm(false), isUnlocked(false), roll_w(0), pitch_w(0), yaw_w(0), currentPose()
     {
@@ -42,82 +43,78 @@ public:
 
     // onOrientationData() is called whenever the Myo device provides its current orientation, which is represented
     // as a unit quaternion.
-    void onOrientationData(myo::Myo* myo, uint64_t timestamp, const myo::Quaternion<float>& quat)
-    {
-        using std::atan2;
-        using std::asin;
-        using std::sqrt;
-        using std::max;
-        using std::min;
+	void onOrientationData(myo::Myo* myo, uint64_t timestamp, const myo::Quaternion<float>& quat)
+	{
+		using std::atan2;
+		using std::asin;
+		using std::sqrt;
+		using std::max;
+		using std::min;
 
-        // Calculate Euler angles (roll, pitch, and yaw) from the unit quaternion.
-        float roll = atan2(2.0f * (quat.w() * quat.x() + quat.y() * quat.z()),
-                           1.0f - 2.0f * (quat.x() * quat.x() + quat.y() * quat.y()));
-        float pitch = asin(max(-1.0f, min(1.0f, 2.0f * (quat.w() * quat.y() - quat.z() * quat.x()))));
-        float yaw = atan2(2.0f * (quat.w() * quat.z() + quat.x() * quat.y()),
-                        1.0f - 2.0f * (quat.y() * quat.y() + quat.z() * quat.z()));
+		// Calculate Euler angles (roll, pitch, and yaw) from the unit quaternion.
+		float roll = atan2(2.0f * (quat.w() * quat.x() + quat.y() * quat.z()),
+			1.0f - 2.0f * (quat.x() * quat.x() + quat.y() * quat.y()));
+		float pitch = asin(max(-1.0f, min(1.0f, 2.0f * (quat.w() * quat.y() - quat.z() * quat.x()))));
+		float yaw = atan2(2.0f * (quat.w() * quat.z() + quat.x() * quat.y()),
+			1.0f - 2.0f * (quat.y() * quat.y() + quat.z() * quat.z()));
 
-        // Convert the floating point angles in radians to a scale from 0 to 18.
-        roll_w = static_cast<int>((roll + (float)M_PI)/(M_PI * 2.0f) * 18);
-        pitch_w = static_cast<int>((pitch + (float)M_PI/2.0f)/M_PI * 18);
-        yaw_w = static_cast<int>((yaw + (float)M_PI)/(M_PI * 2.0f) * 18);
+		// Convert the floating point angles in radians to a scale from 0 to 18.
+		roll_w = static_cast<int>((roll + (float)M_PI) / (M_PI * 2.0f) * 18);
+		pitch_w = static_cast<int>((pitch + (float)M_PI / 2.0f) / M_PI * 18);
+		yaw_w = static_cast<int>((yaw + (float)M_PI) / (M_PI * 2.0f) * 18);
 
-			//counting functions
-			CountCurl();
-			CountPunch();
+		
+		
 
+		
     }
 
+	
+	//funcion for counting curls
+	void CountCurl()
+	{
 
-		//funcion for counting curls
-		void CountCurl()//(int roll_w, int pitch_w, int yaw_w, int& curls)
+
+		//while we are not counting
+		if (!countingCurl && (pitch_w <= 3)) //condition that triggers the start of the counting the start of counting
 		{
-
-
-			//while we are not counting
-			if (!countingCurl && (pitch_w <= 3)) //condition that triggers the start of the counting the start of counting
-			{
-				countingCurl = true; //begin counting
-			}
-
-			//While counting
-			else if (countingCurl && (pitch_w >= 8))//triggers that end the counting period
-			{
-				curls++;    //adds to number of repititions
-				countingCurl = false; //we're done counting  
-			}
-			else
-			{
-				return; //leave functin
-			}
-
+			countingCurl = true; //begin counting
 		}
 
-		//this function counts punches
-		void CountPunch()//(int roll_w, int pitch_w, int yaw_w, int& punches)
+		//While counting
+		else if (countingCurl && (pitch_w >= 8))//triggers that end the counting period
 		{
-			//while we are not counting
-			if (!countingPunch && (roll_w <= 6) && (pitch_w >= 12)) //condition that triggers the start of the counting the start of counting
-			{
-				countingPunch = true; //begin counting
-			}
-
-			//While counting
-			else if (countingPunch && (roll_w >= 8) && (pitch_w <= 9))//triggers that end the counting period
-			{
-				punches++;    //adds to number of repititions
-				countingPunch = false; //we're done counting  
-			}
-			else
-			{
-				return; //leave function
-			}
-
+			curls++;    //adds to number of repititions
+			countingCurl = false; //we're done counting  
+		}
+		else
+		{
+			return; //leave functin
 		}
 
+	}
 
+	//this function counts punches
+	void CountPunch()
+	{
+		//while we are not counting
+		if (!countingPunch && (roll_w <= 6) && (pitch_w >= 12)) //condition that triggers the start of the counting the start of counting
+		{
+			countingPunch = true; //begin counting
+		}
+	
+		//While counting
+		else if (countingPunch && (roll_w >= 8) && (pitch_w <= 9))//triggers that end the counting period
+		{
+			punches++;    //adds to number of repititions
+			countingPunch = false; //we're done counting  
+		}
+		else
+		{
+			return; //leave function
+		}
 
-
+	}
 
     // onPose() is called whenever the Myo detects that the person wearing it has changed their pose, for example,
     // making a fist, or not making a fist anymore.
@@ -184,6 +181,9 @@ public:
 			<< '[' << punches << ']' << '[' << curls << ']';
 
         if (onArm) {
+			//counting functions
+			CountCurl();
+			CountPunch();
             // Print out the lock state, the currently recognized pose, and which arm Myo is being worn on.
 
             // Pose::toString() provides the human-readable name of a pose. We can also output a Pose directly to an
